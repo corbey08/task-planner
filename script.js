@@ -127,6 +127,11 @@ function getSampleTurnpoints() {
 }
 
 function loadAirspace() {
+    // Initialize airspace layer first
+    if (!airspaceLayer) {
+        airspaceLayer = L.layerGroup();
+    }
+    
     fetch('airspace.geojson')
         .then(response => {
             if (!response.ok) {
@@ -137,6 +142,13 @@ function loadAirspace() {
             return response.json();
         })
         .then(geojsonData => {
+            // Clear existing airspace data
+            if (airspaceLayer) {
+                airspaceLayer.clearLayers();
+            } else {
+                airspaceLayer = L.layerGroup();
+            }
+
             const airspaceStyle = (feature) => {
                 const airspaceClass = feature.properties.CLASS;
                 return {
@@ -160,22 +172,24 @@ function loadAirspace() {
                 layer.bindPopup(popupContent);
             };
 
-            airspaceLayer = L.geoJSON(geojsonData, {
+            const geoJsonLayer = L.geoJSON(geojsonData, {
                 style: airspaceStyle,
                 onEachFeature: onEachAirspaceFeature
-            }).addTo(map); // <--- Add .addTo(map) here directly
+            });
+
+            // Add the GeoJSON layer to our airspace layer group
+            airspaceLayer.addLayer(geoJsonLayer);
+
+            // Add to map if airspace should be visible
+            if (airspaceVisible && map && !map.hasLayer(airspaceLayer)) {
+                airspaceLayer.addTo(map);
+            }
 
             console.log('Airspace GeoJSON loaded and processed.');
-
         })
         .catch(error => {
             console.error('There was a problem loading the airspace GeoJSON file:', error);
             createSampleAirspace();
-            // If createSampleAirspace() creates the layer, you'll need to add it to the map here too.
-            // Assuming createSampleAirspace already adds it or sets airspaceLayer to something addable.
-            if (airspaceLayer && !map.hasLayer(airspaceLayer)) {
-                airspaceLayer.addTo(map);
-            }
         });
 }
 
@@ -263,7 +277,7 @@ function parseCoordinate(coordStr) {
     if (dmsMatch) {
         const degrees = parseInt(dmsMatch[1]);
         const minutes = parseInt(dmsMatch[2]);
-        const seconds = parseInt(dms[3]); // Corrected typo here from dmsMatch[3]
+        const seconds = parseInt(dmsMatch[3]);
         const direction = dmsMatch[4];
 
         let decimal = degrees + minutes / 60 + seconds / 3600;
@@ -276,7 +290,6 @@ function parseCoordinate(coordStr) {
     console.warn(`Could not parse coordinate: ${coordStr}`);
     return NaN;
 }
-
 
 // Get airspace color based on class
 function getAirspaceColor(airspaceClass) {
@@ -296,10 +309,8 @@ function getAirspaceColor(airspaceClass) {
     return colors[airspaceClass] || '#ff0000';
 }
 
-
 // Add turnpoints to map
 function addTurnpointsToMap() {
-
     turnpointMarkerMap.forEach(marker => map.removeLayer(marker));
     turnpointMarkerMap.clear();
 
@@ -313,7 +324,6 @@ function addTurnpointsToMap() {
             fillOpacity: 0.8
         });
 
-
         const tooltipContent = `<b>${point.name}</b><br>Code: ${point.code}<br>${point.description}`;
         marker.bindTooltip(tooltipContent, {
             permanent: false,
@@ -321,15 +331,13 @@ function addTurnpointsToMap() {
             offset: [0, -10]
         });
 
-
         marker.turnpointData = point;
 
         // Click handler
         marker.on('click', (e) => {
-            const clickedPoint = e.target.turnpointData; // Retrieve the stored turnpoint data
+            const clickedPoint = e.target.turnpointData;
             console.log(`Clicked on ${clickedPoint.name} (${clickedPoint.code})`);
             console.log('Current task length:', selectedTask.length);
-
 
             if (selectedTask.length > 0) {
                 const lastPoint = selectedTask[selectedTask.length - 1];
@@ -337,7 +345,7 @@ function addTurnpointsToMap() {
 
                 if (lastPoint.code === clickedPoint.code) {
                     console.log('Preventing consecutive duplicate');
-                    return; // Don't add consecutive duplicates
+                    return;
                 }
             }
 
@@ -351,7 +359,6 @@ function addTurnpointsToMap() {
 
     updateTaskMarkers();
 }
-
 
 // Create sample airspace zones (fallback to show when import hasn't worked)
 function createSampleAirspace() {
@@ -397,12 +404,17 @@ function createSampleAirspace() {
         }
     ];
 
-    airspaceLayer = L.layerGroup(); // This creates the layer group
+    // Clear existing airspace data
+    if (airspaceLayer) {
+        airspaceLayer.clearLayers();
+    } else {
+        airspaceLayer = L.layerGroup();
+    }
 
     airspaceZones.forEach(zone => {
         const rectangle = L.rectangle(zone.bounds, {
-            color: '#ff0000',
-            fillColor: '#ff0000',
+            color: getAirspaceColor(zone.type),
+            fillColor: getAirspaceColor(zone.type),
             fillOpacity: 0.3,
             weight: 2
         }).bindPopup(`<b>${zone.name}</b><br>Type: ${zone.type}`);
@@ -410,19 +422,30 @@ function createSampleAirspace() {
         airspaceLayer.addLayer(rectangle);
     });
 
-    if (airspaceVisible && map) { 
+    // Add to map if airspace should be visible and map exists
+    if (airspaceVisible && map && !map.hasLayer(airspaceLayer)) { 
         airspaceLayer.addTo(map);
     }
+    
+    console.log('Sample airspace created and loaded.');
 }
 
 // Toggle airspace visibility
 function toggleAirspace() {
-    if (airspaceVisible) {
+    if (!airspaceLayer) {
+        console.warn('Airspace layer not initialized. Creating sample airspace.');
+        createSampleAirspace();
+        return;
+    }
+
+    if (airspaceVisible && map.hasLayer(airspaceLayer)) {
         map.removeLayer(airspaceLayer);
         airspaceVisible = false;
+        console.log('Airspace hidden');
     } else {
-        map.addLayer(airspaceLayer);
+        airspaceLayer.addTo(map);
         airspaceVisible = true;
+        console.log('Airspace shown');
     }
 }
 
@@ -443,16 +466,13 @@ function switchMapType() {
 function setScoringMethod(method) {
     scoringMethod = method;
 
-
     document.querySelectorAll('.scoring-option').forEach(option => {
         option.classList.remove('active');
     });
     event.target.classList.add('active');
 
-
     updateTaskDisplay();
 }
-
 
 // Add point to task
 function addToTask(point) {
@@ -462,7 +482,6 @@ function addToTask(point) {
     updateTaskLine();
     updateTaskMarkers();
 }
-
 
 function updateTaskDisplay() {
     const taskListDiv = document.getElementById('taskList');
@@ -510,17 +529,14 @@ function updateTaskDisplay() {
                 `;
     });
 
-
     if (scoringMethod === 'barrels' && selectedTask.length > 2) {
         const intermediateTurnpoints = selectedTask.length - 2;
         const totalReduction = intermediateTurnpoints * 1.0;
         totalDistance = Math.max(0, totalDistance - totalReduction);
     }
 
-
     taskListDiv.innerHTML = html;
     document.getElementById('totalDistance').textContent = totalDistance.toFixed(1);
-
 
     selectedTask.forEach((point, index) => {
         const dialog = document.getElementById(`replaceDialog-${index}`);
@@ -548,7 +564,6 @@ function removeFromTask(index) {
     updateTaskMarkers();
 }
 
-
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -571,14 +586,12 @@ function updateTaskLine() {
             color: '#ff0000',
             weight: 3,
             opacity: 0.7,
-            dashArray: '5, 5' // Dashed line for better visibility
+            dashArray: '5, 5'
         }).addTo(map);
     }
 }
 
-
 function updateTaskMarkers() {
-
     turnpointMarkerMap.forEach(marker => {
         marker.setStyle({
             radius: 6,
@@ -590,19 +603,17 @@ function updateTaskMarkers() {
         });
     });
 
-
     selectedTask.forEach((point, index) => {
         const marker = turnpointMarkerMap.get(point.code);
         if (marker) {
             let markerColor = '#ff3333';
             let markerSize = 8;
 
-            // Different styling for start/finish
             if (index === 0) {
-                markerColor = '#00ff00'; // Green for start
+                markerColor = '#00ff00';
                 markerSize = 10;
             } else if (index === selectedTask.length - 1) {
-                markerColor = '#ff0000'; // Red for finish
+                markerColor = '#ff0000';
                 markerSize = 10;
             }
 
@@ -614,7 +625,6 @@ function updateTaskMarkers() {
                 opacity: 1,
                 fillOpacity: 0.9
             });
-
 
             marker.bindPopup(`<b>Task Point ${index + 1}</b><br>${point.name} (${point.code})`);
         }
@@ -629,9 +639,7 @@ function clearTask() {
     updateTaskMarkers();
 }
 
-
 function openReplaceDialog(index) {
-
     selectedTask.forEach((_, i) => {
         const dialog = document.getElementById(`replaceDialog-${i}`);
         if (dialog) dialog.style.display = 'none';
@@ -644,23 +652,19 @@ function openReplaceDialog(index) {
         if (input) {
             input.value = '';
             input.focus();
-
             updateDatalist('');
         }
     }
 }
 
-
 function cancelReplace(index) {
     const dialog = document.getElementById(`replaceDialog-${index}`);
     if (dialog) dialog.style.display = 'none';
-    // Clear the input and datalist too
     const input = document.getElementById(`replaceInput-${index}`);
     if (input) input.value = '';
     const datalist = document.getElementById('turnpointSuggestions');
     if (datalist) datalist.innerHTML = '';
 }
-
 
 function updateDatalist(searchTerm) {
     const datalist = document.getElementById('turnpointSuggestions');
@@ -669,18 +673,15 @@ function updateDatalist(searchTerm) {
     datalist.innerHTML = '';
     const lowerSearchTerm = searchTerm.toLowerCase();
 
-    // Filter and add top 20 relevant results to the datalist
     turnpoints.filter(point =>
         point.name.toLowerCase().includes(lowerSearchTerm) ||
         point.code.toLowerCase().includes(lowerSearchTerm)
     ).slice(0, 20).forEach(point => {
         const option = document.createElement('option');
-
         option.value = `${point.name} (${point.code})`;
         datalist.appendChild(option);
     });
 }
-
 
 function confirmReplace(index) {
     const input = document.getElementById(`replaceInput-${index}`);
@@ -691,7 +692,6 @@ function confirmReplace(index) {
         return;
     }
 
-
     const newPoint = turnpoints.find(point =>
         point.name.toLowerCase() === newPointIdentifier.toLowerCase() ||
         point.code.toLowerCase() === newPointIdentifier.toLowerCase() ||
@@ -699,17 +699,13 @@ function confirmReplace(index) {
     );
 
     if (newPoint) {
-
         if (selectedTask[index] && selectedTask[index].code === newPoint.code) {
             console.log("Replacing with the same turnpoint. No change made.");
             cancelReplace(index);
             return;
         }
 
-
         selectedTask[index] = newPoint;
-
-
         updateTaskDisplay();
         updateTaskLine();
         updateTaskMarkers();
@@ -719,42 +715,34 @@ function confirmReplace(index) {
     }
 }
 
-
 function highlightAndPanToTurnpoint(point) {
-
     if (activeSearchHighlightMarker) {
         activeSearchHighlightMarker.remove();
         activeSearchHighlightMarker = null;
     }
 
-
     const originalMarker = turnpointMarkerMap.get(point.code);
 
     if (originalMarker) {
-
-        const highlightRadius = 15; // Should be larger than your standard marker
+        const highlightRadius = 15;
         const highlightCircle = L.circleMarker([point.lat, point.lon], {
             radius: highlightRadius,
-            fillColor: '#ffa500', // Orange for highlight
+            fillColor: '#ffa500',
             color: '#fff',
             weight: 3,
             opacity: 1,
             fillOpacity: 0.5,
-            className: 'search-highlight-marker' // Add a class for potential CSS animation
+            className: 'search-highlight-marker'
         });
-
 
         highlightCircle.turnpointData = point;
 
-
         highlightCircle.on('click', (e) => {
             const clickedPoint = e.target.turnpointData;
-            addToTask(clickedPoint); // Add to task
-
+            addToTask(clickedPoint);
 
             e.target.remove();
             activeSearchHighlightMarker = null;
-
 
             document.getElementById('searchInput').value = '';
             document.getElementById('searchResults').innerHTML = '';
@@ -763,20 +751,16 @@ function highlightAndPanToTurnpoint(point) {
         highlightCircle.addTo(map);
         activeSearchHighlightMarker = highlightCircle;
 
-
         map.flyTo([point.lat, point.lon], 12);
-
         originalMarker.openTooltip();
     }
 }
 
-// Modify searchTurnpoints() to call highlightAndPanToTurnpoint when a search result is clicked
 function searchTurnpoints() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const searchResultsDiv = document.getElementById('searchResults');
-    searchResultsDiv.innerHTML = ''; // Clear previous results
+    searchResultsDiv.innerHTML = '';
 
-    // If clearing the search box, also clear the highlight
     if (searchTerm.length === 0) {
         if (activeSearchHighlightMarker) {
             activeSearchHighlightMarker.remove();
@@ -789,7 +773,6 @@ function searchTurnpoints() {
         return;
     }
 
-    // Filter turnpoints
     const matchedTurnpoints = turnpoints.filter(point =>
         point.name.toLowerCase().includes(searchTerm) ||
         point.code.toLowerCase().includes(searchTerm)
@@ -800,9 +783,6 @@ function searchTurnpoints() {
         return;
     }
 
-    matchedTurnpoints.sort((a, b) => {
-        /* ... (your existing sort logic) ... */ });
-
     matchedTurnpoints.forEach(point => {
         const resultItem = document.createElement('div');
         resultItem.classList.add('search-result-item');
@@ -811,7 +791,7 @@ function searchTurnpoints() {
         resultItem.onclick = () => {
             highlightAndPanToTurnpoint(point);
             document.getElementById('searchResults').innerHTML = '';
-            document.getElementById('searchInput').value = point.name; // Keep the name in search box for context
+            document.getElementById('searchInput').value = point.name;
         };
         searchResultsDiv.appendChild(resultItem);
     });
