@@ -127,27 +127,62 @@ function getSampleTurnpoints() {
 }
 
 function loadAirspace() {
-    fetch('airspace.txt')
+    fetch('airspace.geojson')
         .then(response => {
             if (!response.ok) {
-                console.warn('airspace.txt not found or network error. Loading sample airspace.');
-                createSampleAirspace();
+                console.warn('airspace.geojson not found or network error. Loading sample airspace.');
+                createSampleAirspace(); 
                 throw new Error('Network response was not ok ' + response.statusText);
             }
-            return response.text();
+            return response.json();
         })
-        .then(data => {
-            airspaceData = parseCUBFile(data);
-            if (airspaceData.length === 0) {
-                console.warn('No airspace parsed from airspace.txt. Loading sample airspace.');
-                createSampleAirspace();
+        .then(geojsonData => {
+            // Define styling for different airspace classes
+            const airspaceStyle = (feature) => {
+                const airspaceClass = feature.properties.CLASS; 
+                return {
+                    color: getAirspaceColor(airspaceClass),
+                    fillColor: getAirspaceColor(airspaceClass),
+                    fillOpacity: 0.3,
+                    weight: 2
+                };
+            };
+
+            // Define popup content for each airspace feature
+            const onEachAirspaceFeature = (feature, layer) => {
+                let popupContent = `<b>${feature.properties.NAME || 'Unnamed Airspace'}</b><br>`;
+                popupContent += `Class: ${feature.properties.CLASS || 'N/A'}`;
+
+                // Add altitude information if available in properties
+                if (feature.properties.AL_UNITS || feature.properties.AH_UNITS) {
+                    popupContent += `<br>Alt: ${feature.properties.AL_UNITS || 'GND'} - ${feature.properties.AH_UNITS || 'UNL'}`;
+                }
+                if (feature.properties.FREQUENCY) {
+                    popupContent += `<br>Freq: ${feature.properties.FREQUENCY}`;
+                }
+
+                layer.bindPopup(popupContent);
+            };
+
+            // Create the GeoJSON layer
+            airspaceLayer = L.geoJSON(geojsonData, {
+                style: airspaceStyle,
+                onEachFeature: onEachAirspaceFeature
+            });
+
+            if (airspaceVisible) {
+                airspaceLayer.addTo(map);
             } else {
-                createAirspaceFromData();
+                if (map.hasLayer(airspaceLayer)) {
+                    map.removeLayer(airspaceLayer);
+                }
             }
+            console.log('Airspace GeoJSON loaded and processed.');
+
         })
         .catch(error => {
-            console.error('There was a problem loading the airspace file:', error);
-            createSampleAirspace();
+            console.error('There was a problem loading the airspace GeoJSON file:', error);
+            createSampleAirspace(); // Fallback to your sample rectangles if GeoJSON fails
         });
 }
 
@@ -249,155 +284,6 @@ function parseCoordinate(coordStr) {
     return NaN;
 }
 
-function parseCUBFile(content) {
-    const lines = content.split('\n');
-    const airspaces = [];
-    let currentAirspace = null;
-
-    for (let line of lines) {
-        line = line.trim();
-        if (!line || line.startsWith('*')) continue;
-
-        if (line.startsWith('AC ')) {
-            if (currentAirspace) {
-                airspaces.push(currentAirspace);
-            }
-            currentAirspace = {
-                class: line.substring(3).trim(),
-                name: '',
-                points: [],
-                minAlt: null,
-                minAltUnit: null,
-                maxAlt: null,
-                maxAltUnit: null,
-                frequency: null,
-                arcDirection: null,
-                arcCenter: null
-            };
-        } else if (currentAirspace) {
-            if (line.startsWith('AN ')) {
-                currentAirspace.name = line.substring(3).trim();
-            } else if (line.startsWith('AF ')) {
-                currentAirspace.frequency = line.substring(3).trim();
-            } else if (line.startsWith('AL ')) {
-                currentAirspace.minAltUnit = line.substring(3).trim();
-                currentAirspace.minAlt = parseAltitude(currentAirspace.minAltUnit);
-            } else if (line.startsWith('AH ')) {
-                currentAirspace.maxAltUnit = line.substring(3).trim();
-                currentAirspace.maxAlt = parseAltitude(currentAirspace.maxAltUnit);
-            } else if (line.startsWith('DP ')) {
-                const coords = line.substring(3).trim();
-                const coordParts = coords.split(/\s+/);
-                if (coordParts.length >= 2) {
-                    const lat = parseCoordinate(coordParts[0]);
-                    const lon = parseCoordinate(coordParts[1]);
-                    if (!isNaN(lat) && !isNaN(lon)) {
-                        currentAirspace.points.push([lat, lon]);
-                    }
-                }
-            } else if (line.startsWith('V ')) {
-                const parts = line.substring(2).trim().split('=');
-                if (parts[0] === 'D') {
-                    currentAirspace.arcDirection = parts[1].trim();
-                } else if (parts[0] === 'X') {
-                    const coords = parts[1].trim().split(/\s+/);
-                    if (coords.length >= 2) {
-                        const lat = parseCoordinate(coords[0]);
-                        const lon = parseCoordinate(coords[1]);
-                        if (!isNaN(lat) && !isNaN(lon)) {
-                            currentAirspace.arcCenter = [lat, lon];
-                        }
-                    }
-                }
-            } else if (line.startsWith('DB ')) {
-                const coords = line.substring(3).trim().split(',').map(s => s.trim());
-                if (coords.length === 2 && currentAirspace.arcCenter && currentAirspace.arcDirection) {
-                    const startCoordParts = coords[0].split(/\s+/);
-                    const endCoordParts = coords[1].split(/\s+/);
-
-                    if (startCoordParts.length >= 2 && endCoordParts.length >= 2) {
-                        const startLat = parseCoordinate(startCoordParts[0]);
-                        const startLon = parseCoordinate(startCoordParts[1]);
-                        const endLat = parseCoordinate(endCoordParts[0]);
-                        const endLon = parseCoordinate(endCoordParts[1]);
-
-                        if (!isNaN(startLat) && !isNaN(startLon) && !isNaN(endLat) && !isNaN(endLon)) {
-                            const arcPoints = generateArcPoints(
-                                [startLat, startLon],
-                                [endLat, endLon],
-                                currentAirspace.arcCenter,
-                                currentAirspace.arcDirection
-                            );
-                            currentAirspace.points.push(...arcPoints);
-                        } else {
-                             console.warn("Invalid coordinates in DB line:", line);
-                        }
-                    }
-                } else {
-                    console.warn("DB line found without sufficient arc parameters (center or direction):", line);
-                }
-                currentAirspace.arcDirection = null;
-                currentAirspace.arcCenter = null;
-            }
-        }
-    }
-
-    if (currentAirspace) {
-        airspaces.push(currentAirspace);
-    }
-
-    return airspaces;
-}
-
-function createAirspaceFromData() {
-    if (airspaceLayer) {
-        map.removeLayer(airspaceLayer);
-    }
-    airspaceLayer = L.layerGroup();
-
-    airspaceData.forEach(airspace => {
-        if (airspace.points.length >= 2) {
-            let shape;
-            const isClosed = airspace.points.length > 2 &&
-                             airspace.points[0][0] === airspace.points[airspace.points.length - 1][0] &&
-                             airspace.points[0][1] === airspace.points[airspace.points.length - 1][1];
-
-            if (isClosed) {
-                 shape = L.polygon(airspace.points, {
-                    color: getAirspaceColor(airspace.class),
-                    fillColor: getAirspaceColor(airspace.class),
-                    fillOpacity: 0.3,
-                    weight: 2
-                });
-            } else {
-                shape = L.polyline(airspace.points, {
-                    color: getAirspaceColor(airspace.class),
-                    weight: 2,
-                    opacity: 0.7,
-                    dashArray: '5, 5'
-                });
-            }
-
-            let popupContent = `<b>${airspace.name}</b><br>Class: ${airspace.class}`;
-            if (airspace.minAltUnit !== null || airspace.maxAltUnit !== null) {
-                popupContent += `<br>Alt: ${airspace.minAltUnit || 'GND'} - ${airspace.maxAltUnit || 'UNL'}`;
-            }
-            if (airspace.frequency) {
-                popupContent += `<br>Freq: ${airspace.frequency}`;
-            }
-
-            shape.bindPopup(popupContent);
-
-            airspaceLayer.addLayer(shape);
-        } else {
-            console.warn(`Airspace "${airspace.name}" has insufficient points to draw.`);
-        }
-    });
-
-    if (airspaceVisible) {
-      airspaceLayer.addTo(map);
-    }
-}
 
 // Get airspace color based on class
 function getAirspaceColor(airspaceClass) {
