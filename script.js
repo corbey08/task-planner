@@ -246,7 +246,7 @@ function parseCoordinate(coordStr) {
         return parseFloat(coordStr);
     }
 
-    const ddmMatch = coordStr.match(/(\d{1,3})(\d{2}\.\d+)([NSEW])/i);
+    const ddmMatch = coordStr.match(/^(\d{1,3})(\d{2}\.\d+)([NSEW])$/i);
     if (ddmMatch) {
         const degrees = parseInt(ddmMatch[1], 10);
         const minutes = parseFloat(ddmMatch[2]);
@@ -263,7 +263,7 @@ function parseCoordinate(coordStr) {
     if (dmsMatch) {
         const degrees = parseInt(dmsMatch[1]);
         const minutes = parseInt(dmsMatch[2]);
-        const seconds = parseInt(dmsMatch[3]);
+        const seconds = parseInt(dms[3]); // Corrected typo here from dmsMatch[3]
         const direction = dmsMatch[4];
 
         let decimal = degrees + minutes / 60 + seconds / 3600;
