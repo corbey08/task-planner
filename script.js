@@ -6,7 +6,7 @@ let airspaceData = [];
 let map;
 let selectedTask = [];
 let taskLine = null;
-let airspaceVisible = false;
+let airspaceVisible = true;
 let currentMapType = 'carto';
 let scoringMethod = 'fai';
 let highlightedSearchMarkers = L.layerGroup();
@@ -131,15 +131,14 @@ function loadAirspace() {
         .then(response => {
             if (!response.ok) {
                 console.warn('airspace.geojson not found or network error. Loading sample airspace.');
-                createSampleAirspace(); 
+                createSampleAirspace();
                 throw new Error('Network response was not ok ' + response.statusText);
             }
             return response.json();
         })
         .then(geojsonData => {
-            // Define styling for different airspace classes
             const airspaceStyle = (feature) => {
-                const airspaceClass = feature.properties.CLASS; 
+                const airspaceClass = feature.properties.CLASS;
                 return {
                     color: getAirspaceColor(airspaceClass),
                     fillColor: getAirspaceColor(airspaceClass),
@@ -148,41 +147,35 @@ function loadAirspace() {
                 };
             };
 
-            // Define popup content for each airspace feature
             const onEachAirspaceFeature = (feature, layer) => {
                 let popupContent = `<b>${feature.properties.NAME || 'Unnamed Airspace'}</b><br>`;
                 popupContent += `Class: ${feature.properties.CLASS || 'N/A'}`;
 
-                // Add altitude information if available in properties
                 if (feature.properties.AL_UNITS || feature.properties.AH_UNITS) {
                     popupContent += `<br>Alt: ${feature.properties.AL_UNITS || 'GND'} - ${feature.properties.AH_UNITS || 'UNL'}`;
                 }
                 if (feature.properties.FREQUENCY) {
                     popupContent += `<br>Freq: ${feature.properties.FREQUENCY}`;
                 }
-
                 layer.bindPopup(popupContent);
             };
 
-            // Create the GeoJSON layer
             airspaceLayer = L.geoJSON(geojsonData, {
                 style: airspaceStyle,
                 onEachFeature: onEachAirspaceFeature
-            });
+            }).addTo(map); // <--- Add .addTo(map) here directly
 
-            if (airspaceVisible) {
-                airspaceLayer.addTo(map);
-            } else {
-                if (map.hasLayer(airspaceLayer)) {
-                    map.removeLayer(airspaceLayer);
-                }
-            }
             console.log('Airspace GeoJSON loaded and processed.');
 
         })
         .catch(error => {
             console.error('There was a problem loading the airspace GeoJSON file:', error);
-            createSampleAirspace(); // Fallback to your sample rectangles if GeoJSON fails
+            createSampleAirspace();
+            // If createSampleAirspace() creates the layer, you'll need to add it to the map here too.
+            // Assuming createSampleAirspace already adds it or sets airspaceLayer to something addable.
+            if (airspaceLayer && !map.hasLayer(airspaceLayer)) {
+                airspaceLayer.addTo(map);
+            }
         });
 }
 
@@ -404,7 +397,7 @@ function createSampleAirspace() {
         }
     ];
 
-    airspaceLayer = L.layerGroup();
+    airspaceLayer = L.layerGroup(); // This creates the layer group
 
     airspaceZones.forEach(zone => {
         const rectangle = L.rectangle(zone.bounds, {
@@ -416,6 +409,10 @@ function createSampleAirspace() {
 
         airspaceLayer.addLayer(rectangle);
     });
+
+    if (airspaceVisible && map) { 
+        airspaceLayer.addTo(map);
+    }
 }
 
 // Toggle airspace visibility
