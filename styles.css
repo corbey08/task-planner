@@ -1,0 +1,426 @@
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a1a;
+            height: 100vh;
+            overflow: hidden;
+            color: #333;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 350px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1000;
+        }
+
+        .sidebar h1 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+            font-weight: 300;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .sidebar .subtitle {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 25px;
+        }
+
+        .control-section {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .control-section h3 {
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+
+        .btn {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.active {
+            background: rgba(255, 255, 255, 0.4);
+            border-color: rgba(255,255,255,0.6);
+        }
+
+        .distance-display {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .distance-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 5px;
+        }
+
+        .distance-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .scoring-toggle {
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 15px;
+        }
+
+        .scoring-option {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+        }
+
+        .scoring-option.active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .task-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .task-point {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.2s ease;
+        }
+
+        .task-point:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .task-point-info {
+            flex: 1;
+        }
+
+        .task-point-name {
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .task-point-code {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+
+        .remove-point {
+            background: rgba(255, 71, 87, 0.8);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .remove-point:hover {
+            background: rgba(255, 71, 87, 1);
+        }
+
+        .empty-task {
+            text-align: center;
+            padding: 30px 20px;
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .map-btn {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0,0,0,0.1);
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .map-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .legend h4 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid #333;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 40vh;
+                order: 2;
+            }
+            
+            .map-container {
+                height: 60vh;
+                order: 1;
+            }
+            
+            .map-controls {
+                top: 10px;
+                right: 10px;
+            }
+            
+            .legend {
+                bottom: 10px;
+                left: 10px;
+            }
+
+            .search-input {
+                width: 100%;
+                padding: 10px;
+                border: 1px solid rgba(255,255,255,0.3);
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.1);
+                color: white;
+                font-size: 14px;
+                margin-bottom: 10px;
+            }
+
+            .search-input::placeholder {
+                color: rgba(255, 255, 255, 0.7);
+            }
+
+            .search-input:focus {
+                outline: none;
+                border-color: rgba(255, 255, 255, 0.6);
+                box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+            }
+
+            .search-results {
+                max-height: 200px;
+                overflow-y: auto;
+                border-top: 1px solid rgba(255,255,255,0.2);
+                padding-top: 10px;
+            }
+
+            .search-result-item {
+                padding: 8px 10px;
+                margin-bottom: 5px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 6px;
+                cursor: pointer;
+                transition: background 0.2s ease;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 13px;
+            }
+
+            .search-result-item:hover {
+                background: rgba(255, 255, 255, 0.2);
+            }
+
+            .search-result-item span {
+                color: white;
+            }
+
+            .search-result-item .result-code {
+                font-size: 0.9em;
+                opacity: 0.8;
+            }
+
+            .task-point {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .task-point-actions {
+                display: flex;
+                gap: 5px;
+            }
+
+            .replace-point {
+                background: rgba(0, 150, 255, 0.6);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 25px;
+                height: 25px;
+                font-size: 1.1em;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s ease;
+                flex-shrink: 0;
+            }
+
+            .replace-point:hover {
+                background: rgba(0, 150, 255, 0.8);
+            }
+
+            .replace-dialog {
+                background: rgba(255, 255, 255, 0.1);
+                padding: 10px;
+                margin-top: 5px;
+                border-radius: 8px;
+                display: none;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+                box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+            }
+
+            .replace-dialog input {
+                flex-grow: 1;
+                padding: 8px;
+                border: 1px solid rgba(255,255,255,0.3);
+                border-radius: 6px;
+                background: rgba(255, 255, 255, 0.1);
+                color: white;
+                font-size: 13px;
+                box-sizing: border-box;
+            }
+
+            .replace-dialog input::placeholder {
+                color: rgba(255, 255, 255, 0.7);
+            }
+
+            .replace-dialog input:focus {
+                outline: none;
+                border-color: rgba(255, 255, 255, 0.6);
+                box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+            }
+
+            .replace-dialog button {
+                padding: 8px 12px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                transition: background 0.2s ease;
+            }
+
+            .replace-dialog button:first-of-type { 
+                background: #4CAF50; 
+                color: white;
+            }
+
+            .replace-dialog button:first-of-type:hover {
+                background: #45a049;
+            }
+
+            .replace-dialog button:last-of-type { 
+                background: #f44336;
+                color: white;
+            }
+
+            .replace-dialog button:last-of-type:hover {
+                background: #da190b;
+            }
+        }

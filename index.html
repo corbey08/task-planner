@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Greg Corbett">
+    <title>Glider Pilot Task Planning</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <h1>🛩️ Task Planning</h1>
+            <p class="subtitle">Click turnpoints to build your task</p>
+
+            <div class="control-section">
+                <h3>Scoring Method</h3>
+                <div class="scoring-toggle">
+                    <div class="scoring-option active" onclick="setScoringMethod('fai')">FAI Sectors</div>
+                    <div class="scoring-option" onclick="setScoringMethod('barrels')">Barrels</div>
+                </div>
+
+                <div class="distance-display">
+                    <div class="distance-value" id="totalDistance">0.0</div>
+                    <div class="distance-label">kilometers</div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Task Points</h3>
+                <div class="task-list" id="taskList">
+                    <div class="empty-task">
+                        Click on turnpoints on the map to start building your task
+                    </div>
+                </div>
+                <button class="btn" onclick="clearTask()" style="margin-top: 15px;">Clear Task</button>
+            </div>
+
+            <div class="control-section">
+                <h3>Search Turnpoints</h3>
+                <input type="text" id="searchInput" placeholder="Search by name or code..." class="search-input" onkeyup="searchTurnpoints()">
+                <div id="searchResults" class="search-results">
+                </div>
+            </div>
+            </div> <div class="map-container">
+            <div class="map-controls">
+                <button class="map-btn" onclick="toggleAirspace()">Toggle Airspace</button>
+                <button class="map-btn" onclick="switchMapType()">Switch Map Type</button>
+            </div>
+
+            <div id="map"></div>
+
+            <div class="legend">
+                <h4>Legend</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #3388ff;"></div>
+                    <span>BGA Turnpoints</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #ff3333;"></div>
+                    <span>Task Points</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: rgba(255,0,0,0.3); border-radius: 4px;"></div>
+                    <span>Airspace</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
