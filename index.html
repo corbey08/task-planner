@@ -6,7 +6,6 @@
     <meta name="author" content="Greg Corbett">
     <title>Glider Pilot Task Planning</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    <script src="https://unpkg.com/leaflet-polylinetextpath/Leaflet.PolylineTextPath.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -17,6 +16,7 @@
             <p>Idea for website from Seth Helstrip</p>
             <p>Turnpoints from NavBoys</p>
             <p>Airspace from Open AIP. This is meant as a tool - please check your own airspace</p>
+
             <div class="control-section">
                 <h3>Scoring Method</h3>
                 <div class="scoring-toggle">
@@ -47,14 +47,14 @@
                 </div>
             </div>
             </div> <div class="map-container">
-            <div class="map-controls">
-                <button class="map-btn" onclick="toggleAirspace()">Toggle Airspace</button>
-                <button class="map-btn" onclick="switchMapType()">Switch Map Type</button>
+                <div class="map-controls">
+                    <button class="map-btn" onclick="toggleAirspace()">Toggle Airspace</button>
+                    <button class="map-btn" onclick="switchMapType()">Switch Map Type</button>
+                </div>
+
+                <div id="map"></div>
+
             </div>
-
-            <div id="map"></div>
-
-        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
