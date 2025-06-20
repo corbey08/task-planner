@@ -1,6 +1,6 @@
 // Global variables for data
 let turnpoints = [];
-let airspaceData = [];
+let airspaceData = []; // Not strictly needed if processing directly into layerGroup
 
 // Global variables
 let map;
@@ -14,8 +14,9 @@ let activeSearchHighlightMarker = null;
 
 let turnpointMarkerMap = new Map();
 
-let airspaceLayer = null;
+let airspaceLayer = null; // This will hold all airspace features and their labels
 
+// --- Helper Functions (Keep these as they are) ---
 function parseAltitude(altStr) {
     altStr = altStr.toLowerCase().trim();
     if (altStr.includes('ft')) {
@@ -103,8 +104,8 @@ function loadTurnpoints() {
         .then(data => {
             turnpoints = parseCUPFile(data);
             if (turnpoints.length === 0) {
-                 console.warn('No turnpoints parsed from turnpoints.cup. Loading sample turnpoints.');
-                 turnpoints = getSampleTurnpoints();
+                console.warn('No turnpoints parsed from turnpoints.cup. Loading sample turnpoints.');
+                turnpoints = getSampleTurnpoints();
             }
             addTurnpointsToMap();
         })
@@ -126,8 +127,9 @@ function getSampleTurnpoints() {
     ];
 }
 
+// --- Modified loadAirspace and new addAirspaceLabel functions ---
 function loadAirspace() {
-    // Initialize airspace layer first
+    // Initialize airspace layer if it doesn't exist
     if (!airspaceLayer) {
         airspaceLayer = L.layerGroup();
     }
@@ -136,27 +138,24 @@ function loadAirspace() {
         .then(response => {
             if (!response.ok) {
                 console.warn('airspace.geojson not found or network error. Loading sample airspace.');
-                createSampleAirspace();
+                createSampleAirspace(); // Fallback to sample
                 throw new Error('Network response was not ok ' + response.statusText);
             }
             return response.json();
         })
         .then(geojsonData => {
-            // Clear existing airspace data
-            if (airspaceLayer) {
-                airspaceLayer.clearLayers();
-            } else {
-                airspaceLayer = L.layerGroup();
-            }
+            // Clear existing airspace data from the layer group
+            airspaceLayer.clearLayers();
 
             const airspaceStyle = (feature) => {
                 const airspaceClass = feature.properties.icaoClass || feature.properties.CLASS;
                 return {
                     color: getAirspaceColor(airspaceClass),
-                    fillOpacity: 0, // No fill (important for boundary labels to be visible)
+                    fillColor: getAirspaceColor(airspaceClass), // Add fill color
+                    fillOpacity: 0.1, // Semi-transparent fill
                     weight: 1.5,
                     opacity: 0.7,
-                    interactive: false 
+                    interactive: false // IMPORTANT: Ensures turnpoints below are clickable
                 };
             };
 
@@ -172,22 +171,13 @@ function loadAirspace() {
                     altitudeText = `${feature.properties.AL_UNITS || 'GND'} - ${feature.properties.AH_UNITS || 'UNL'}`;
                 }
                 
-                const fullLabelText = `${name} | ${altitudeText}`;
+                const labelText = `${name}<br><small>${altitudeText}</small>`; // Use <br> for new line, <small> for smaller altitude text
 
-                // Add the boundary label based on layer type
-                if (layer instanceof L.Polyline) {
-                    layer.setText(fullLabelText, {
-                        center: true,
-                        offset: 0,
-                        attributes: {
-                            'font-size': '12',
-                            'class': 'airspace-text-path'
-                        }
-                    });
-                } else if (layer instanceof L.Polygon) {
-                    addBoundaryLabel(layer, name, altitudeText); 
-                    addPolygonEdgeLabels(layer, name, altitudeText); 
+                // Add label for Polygon and LineString features
+                if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
+                    addAirspaceLabel(layer, labelText);
                 }
+                // For other geometry types (e.g., Point), no label will be added by this logic
             };
 
             const geoJsonLayer = L.geoJSON(geojsonData, {
@@ -196,6 +186,7 @@ function loadAirspace() {
             });
 
             // Add the GeoJSON layer to our airspace layer group
+            // This adds all the polygons/lines AND their associated divIcon labels (added in onEachFeature)
             airspaceLayer.addLayer(geoJsonLayer);
 
             // Add to map if airspace should be visible
@@ -207,11 +198,46 @@ function loadAirspace() {
         })
         .catch(error => {
             console.error('There was a problem loading the airspace GeoJSON file:', error);
-            createSampleAirspace();
+            createSampleAirspace(); // Fallback to sample
         });
 }
 
-// Helper function to format altitude from the GeoJSON structure
+/**
+ * Adds a custom HTML label (L.divIcon marker) to an airspace layer.
+ * This is a general function for both Polygons and Polylines.
+ * @param {L.Layer} layer The Leaflet layer (Polygon or Polyline) to label.
+ * @param {string} labelText The HTML content for the label.
+ */
+function addAirspaceLabel(layer, labelText) {
+    let center;
+    if (layer instanceof L.Polygon) {
+        // For polygons, use the geographical center of the polygon
+        center = layer.getBounds().getCenter();
+    } else if (layer instanceof L.Polyline) {
+        // For polylines, use the midpoint of the line
+        center = layer.getCenter(); // Leaflet method for polylines
+    } else {
+        // If it's neither a polygon nor a polyline, we can't label it this way
+        return;
+    }
+
+    const labelMarker = L.marker(center, {
+        icon: L.divIcon({
+            className: 'airspace-label',
+            html: `<div>${labelText}</div>`,
+            iconSize: [200, 50], // Adjust size as needed
+            iconAnchor: [100, 25] // Anchor in the center of the divIcon
+        }),
+        interactive: false // Ensure labels don't block clicks on underlying map features
+    });
+
+    // Add the label marker to the airspaceLayer group.
+    // L.geoJSON already added the main feature, we add labels separately
+    // but keep them in the same layerGroup for easy toggling.
+    airspaceLayer.addLayer(labelMarker);
+}
+
+// --- Keep formatAltitude and getClassFromIcaoClass as they are ---
 function formatAltitude(altitudeObj) {
     if (!altitudeObj) return 'N/A';
     
@@ -232,7 +258,6 @@ function formatAltitude(altitudeObj) {
     return altText;
 }
 
-// Helper function to convert ICAO class number to letter
 function getClassFromIcaoClass(icaoClass) {
     const classMap = {
         1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G',
@@ -241,67 +266,43 @@ function getClassFromIcaoClass(icaoClass) {
     return classMap[icaoClass] || 'Unknown';
 }
 
-// Function to add text labels along airspace boundaries
-function addBoundaryLabel(layer, name, altitudeText) {
-    const bounds = layer.getBounds();
-    const center = bounds.getCenter();
-    
-    let labelText = name;
-    if (altitudeText) {
-        labelText += `\n${altitudeText}`;
+function getAirspaceColor(airspaceClass) {
+    if (typeof airspaceClass === 'number') {
+        const classMap = {
+            1: '#ff0000', // A
+            2: '#ff0000', // B  
+            3: '#ff6600', // C
+            4: '#0066ff', // D
+            5: '#ff00ff', // E
+            6: '#ffff00', // F
+            7: '#00ff00', // G
+            8: '#ff9900', // Other
+            9: '#ff0000', // CTR
+            10: '#ff6600', // CTA
+            11: '#0066ff', // TMA
+            12: '#ff00ff'  // ATZ
+        };
+        return classMap[airspaceClass] || '#ff0000';
     }
     
-    const textMarker = L.marker(center, {
-        icon: L.divIcon({
-            className: 'airspace-label-center', // Changed class name for clarity
-            html: `<div class="airspace-text">${labelText.replace('\n', '<br>')}</div>`,
-            iconSize: [120, 40], // Adjust size as needed
-            iconAnchor: [60, 20] // Anchor in the center
-        })
-    });
-    
-    airspaceLayer.addLayer(textMarker);
+    const colors = {
+        'A': '#ff0000',
+        'B': '#ff0000',
+        'C': '#ff6600',
+        'D': '#0066ff',
+        'E': '#ff00ff',
+        'F': '#ffff00',
+        'G': '#00ff00',
+        'CTR': '#ff0000',
+        'CTA': '#ff6600',
+        'TMA': '#0066ff',
+        'ATZ': '#ff00ff'
+    };
+    return colors[airspaceClass] || '#ff0000';
 }
 
-// Function to add labels along polygon edges
-function addPolygonEdgeLabels(polygon, name, altitudeText) {
-    const latlngs = polygon.getLatLngs()[0]; // Get the outer ring
-    
-    if (latlngs.length < 3) return;
-    
-    const numLabels = Math.min(4, Math.max(1, Math.floor(latlngs.length / 8)));
-    const interval = Math.floor(latlngs.length / numLabels);
-    
-    for (let i = 0; i < numLabels; i++) {
-        const index = i * interval;
-        if (index < latlngs.length - 1) {
-            const point1 = latlngs[index];
-            const point2 = latlngs[index + 1];
-            
-            const midLat = (point1.lat + point2.lat) / 2;
-            const midLng = (point1.lng + point2.lng) / 2;
-            
-            // Calculate angle for text rotation
-            const angle = Math.atan2(point2.lat - point1.lat, point2.lng - point1.lng) * 180 / Math.PI;
-            
-            let labelText = name;
-            if (altitudeText && i === 0) { 
-                labelText += ` ${altitudeText}`;
-            }
-            
-            const edgeMarker = L.marker([midLat, midLng], {
-                icon: L.divIcon({
-                    className: 'airspace-edge-label',
-                    html: `<div class="airspace-edge-text" style="transform: rotate(${angle}deg)">${labelText}</div>`,
-                    iconSize: [120, 20], // Adjust size as needed
-                    iconAnchor: [60, 10] // Anchor in the center
-                })
-            });
-            
-            airspaceLayer.addLayer(edgeMarker);
-        }
-    }
-}
+// --- Rest of your functions (initMap, parseCUPFile, addTurnpointsToMap, createSampleAirspace, etc.) ---
+// Keep these as they are, with some minor adjustments if they were calling the old labeling functions.
 
 function initMap() {
     map = L.map('map').setView([54.5, -3.0], 6);
@@ -325,7 +326,7 @@ function initMap() {
     highlightedSearchMarkers.addTo(map);
 
     loadTurnpoints();
-    loadAirspace();
+    loadAirspace(); // Will now handle labels differently
 }
 
 function parseCUPFile(content) {
@@ -401,41 +402,6 @@ function parseCoordinate(coordStr) {
     return NaN;
 }
 
-// Update the getAirspaceColor function to handle the new class system
-function getAirspaceColor(airspaceClass) {
-    if (typeof airspaceClass === 'number') {
-        const classMap = {
-            1: '#ff0000', // A
-            2: '#ff0000', // B  
-            3: '#ff6600', // C
-            4: '#0066ff', // D
-            5: '#ff00ff', // E
-            6: '#ffff00', // F
-            7: '#00ff00', // G
-            8: '#ff9900', // Other
-            9: '#ff0000', // CTR
-            10: '#ff6600', // CTA
-            11: '#0066ff', // TMA
-            12: '#ff00ff'  // ATZ
-        };
-        return classMap[airspaceClass] || '#ff0000';
-    }
-    
-    const colors = {
-        'A': '#ff0000',
-        'B': '#ff0000',
-        'C': '#ff6600',
-        'D': '#0066ff',
-        'E': '#ff00ff',
-        'F': '#ffff00',
-        'G': '#00ff00',
-        'CTR': '#ff0000',
-        'CTA': '#ff6600',
-        'TMA': '#0066ff',
-        'ATZ': '#ff00ff'
-    };
-    return colors[airspaceClass] || '#ff0000';
-}
 // Add turnpoints to map
 function addTurnpointsToMap() {
     turnpointMarkerMap.forEach(marker => map.removeLayer(marker));
@@ -489,68 +455,78 @@ function addTurnpointsToMap() {
 
 // Create sample airspace zones (fallback to show when import hasn't worked)
 function createSampleAirspace() {
-    const airspaceZones = [{
-            name: "London TMA",
-            bounds: [
-                [51.3, -0.8],
-                [51.7, 0.3]
-            ],
-            type: "TMA"
-        },
-        {
-            name: "Manchester CTA",
-            bounds: [
-                [53.2, -2.6],
-                [53.6, -2.0]
-            ],
-            type: "CTA"
-        },
-        {
-            name: "Birmingham ATZ",
-            bounds: [
-                [52.4, -1.8],
-                [52.5, -1.6]
-            ],
-            type: "ATZ"
-        },
-        {
-            name: "Edinburgh CTA",
-            bounds: [
-                [55.8, -3.5],
-                [56.0, -3.1]
-            ],
-            type: "CTA"
-        },
-        {
-            name: "Bristol CTA",
-            bounds: [
-                [51.3, -2.8],
-                [51.5, -2.4]
-            ],
-            type: "CTA"
-        }
-    ];
+    const airspaceGeoJson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": { "name": "London TMA (Sample)", "CLASS": 11, "lowerLimit": { "value": 2500, "unit": 1, "referenceDatum": 1 }, "upperLimit": { "value": 10000, "unit": 1, "referenceDatum": 1 } },
+                "geometry": { "type": "Polygon", "coordinates": [[[-0.8, 51.3], [0.3, 51.3], [0.3, 51.7], [-0.8, 51.7], [-0.8, 51.3]]] }
+            },
+            {
+                "type": "Feature",
+                "properties": { "name": "Manchester CTA (Sample)", "CLASS": 10, "lowerLimit": { "value": 3000, "unit": 1, "referenceDatum": 1 }, "upperLimit": { "value": 7000, "unit": 1, "referenceDatum": 1 } },
+                "geometry": { "type": "Polygon", "coordinates": [[[-2.6, 53.2], [-2.0, 53.2], [-2.0, 53.6], [-2.6, 53.6], [-2.6, 53.2]]] }
+            },
+            {
+                "type": "Feature",
+                "properties": { "name": "Birmingham ATZ (Sample)", "CLASS": 12, "lowerLimit": { "value": 0, "unit": 1, "referenceDatum": 0 }, "upperLimit": { "value": 2000, "unit": 1, "referenceDatum": 0 } },
+                "geometry": { "type": "Polygon", "coordinates": [[[-1.8, 52.4], [-1.6, 52.4], [-1.6, 52.5], [-1.8, 52.5], [-1.8, 52.4]]] }
+            },
+            {
+                "type": "Feature",
+                "properties": { "name": "Scottish Airway (Sample)", "CLASS": 3, "lowerLimit": { "value": 5000, "unit": 1, "referenceDatum": 1 }, "upperLimit": { "value": 15000, "unit": 1, "referenceDatum": 1 } },
+                "geometry": { "type": "LineString", "coordinates": [[-3.5, 55.8], [-3.1, 56.0], [-2.5, 56.5]] }
+            }
+        ]
+    };
 
-    // Clear existing airspace data
+
+    // Clear existing airspace data from the layer group
     if (airspaceLayer) {
         airspaceLayer.clearLayers();
     } else {
         airspaceLayer = L.layerGroup();
     }
 
-    airspaceZones.forEach(zone => {
-        const rectangle = L.rectangle(zone.bounds, {
-            color: getAirspaceColor(zone.type),
-            fillColor: getAirspaceColor(zone.type),
-            fillOpacity: 0.3,
-            weight: 2
-        }).bindPopup(`<b>${zone.name}</b><br>Type: ${zone.type}`);
+    const airspaceStyle = (feature) => {
+        const airspaceClass = feature.properties.CLASS; // Using 'CLASS' for sample
+        return {
+            color: getAirspaceColor(airspaceClass),
+            fillColor: getAirspaceColor(airspaceClass),
+            fillOpacity: 0.1,
+            weight: 1.5,
+            opacity: 0.7,
+            interactive: false
+        };
+    };
 
-        airspaceLayer.addLayer(rectangle);
+    const onEachAirspaceFeature = (feature, layer) => {
+        let name = feature.properties.name || 'Unnamed Airspace';
+        let altitudeText = '';
+        if (feature.properties.lowerLimit && feature.properties.upperLimit) {
+            const lowerAlt = formatAltitude(feature.properties.lowerLimit);
+            const upperAlt = formatAltitude(feature.properties.upperLimit);
+            altitudeText = `${lowerAlt} - ${upperAlt}`;
+        } else if (feature.properties.AL_UNITS || feature.properties.AH_UNITS) {
+            altitudeText = `${feature.properties.AL_UNITS || 'GND'} - ${feature.properties.AH_UNITS || 'UNL'}`;
+        }
+        
+        const labelText = `${name}<br><small>${altitudeText}</small>`;
+
+        if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
+            addAirspaceLabel(layer, labelText);
+        }
+    };
+
+    const geoJsonLayer = L.geoJSON(airspaceGeoJson, {
+        style: airspaceStyle,
+        onEachFeature: onEachAirspaceFeature
     });
 
-    // Add to map if airspace should be visible and map exists
-    if (airspaceVisible && map && !map.hasLayer(airspaceLayer)) { 
+    airspaceLayer.addLayer(geoJsonLayer);
+
+    if (airspaceVisible && map && !map.hasLayer(airspaceLayer)) {
         airspaceLayer.addTo(map);
     }
     
@@ -561,7 +537,10 @@ function createSampleAirspace() {
 function toggleAirspace() {
     if (!airspaceLayer) {
         console.warn('Airspace layer not initialized. Creating sample airspace.');
-        createSampleAirspace();
+        createSampleAirspace(); // Ensure it's loaded if not already
+        airspaceVisible = true; // Set to true since we just created it and will add it
+        airspaceLayer.addTo(map);
+        console.log('Sample airspace created and shown');
         return;
     }
 
@@ -596,7 +575,13 @@ function setScoringMethod(method) {
     document.querySelectorAll('.scoring-option').forEach(option => {
         option.classList.remove('active');
     });
-    event.target.classList.add('active');
+    // Use event.currentTarget instead of event.target for the click listener in HTML
+    // if setScoringMethod is called directly from onclick.
+    // For simplicity, let's just make sure it sets the correct one:
+    const clickedOption = document.querySelector(`.scoring-option[onclick*="${method}"]`);
+    if (clickedOption) {
+        clickedOption.classList.add('active');
+    }
 
     updateTaskDisplay();
 }
@@ -857,7 +842,7 @@ function highlightAndPanToTurnpoint(point) {
             fillColor: '#ffa500',
             color: '#fff',
             weight: 3,
-            opacity: 1,
+            opacity: 0.5,
             fillOpacity: 0.5,
             className: 'search-highlight-marker'
         });
