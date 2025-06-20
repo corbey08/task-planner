@@ -153,40 +153,35 @@ function loadAirspace() {
                 const airspaceClass = feature.properties.icaoClass || feature.properties.CLASS;
                 return {
                     color: getAirspaceColor(airspaceClass),
-                    fillColor: 'transparent', // No fill, just outline
-                    fillOpacity: 0,
-                    weight: 2,
-                    opacity: 0.8
+                    fillOpacity: 0, // No fill
+                    weight: 1.5,
+                    opacity: 0.7,
+                    interactive: false 
                 };
             };
 
             const onEachAirspaceFeature = (feature, layer) => {
-                // Create popup content
-                let popupContent = `<b>${feature.properties.name || feature.properties.NAME || 'Unnamed Airspace'}</b><br>`;
-                
-                // Handle altitude information from your GeoJSON format
+                // 1. Construct the label text
+                let name = feature.properties.name || feature.properties.NAME || 'Unnamed Airspace';
                 let altitudeText = '';
                 if (feature.properties.lowerLimit && feature.properties.upperLimit) {
                     const lowerAlt = formatAltitude(feature.properties.lowerLimit);
                     const upperAlt = formatAltitude(feature.properties.upperLimit);
                     altitudeText = `${lowerAlt} - ${upperAlt}`;
                 } else if (feature.properties.AL_UNITS || feature.properties.AH_UNITS) {
-                    // Fallback to original format
                     altitudeText = `${feature.properties.AL_UNITS || 'GND'} - ${feature.properties.AH_UNITS || 'UNL'}`;
                 }
                 
-                if (altitudeText) {
-                    popupContent += `Alt: ${altitudeText}`;
-                }
-                
-                if (feature.properties.icaoClass) {
-                    popupContent += `<br>Class: ${getClassFromIcaoClass(feature.properties.icaoClass)}`;
-                }
-                
-                layer.bindPopup(popupContent);
+                const labelText = `${name} | ${altitudeText}`;
 
-                // Add text label along the boundary
-                addBoundaryLabel(layer, feature.properties.name || feature.properties.NAME || 'Unnamed', altitudeText);
+                layer.setText(labelText, {
+                    center: true,
+                    offset: 0,
+                    attributes: {
+                        'font-size': '12',
+                        'class': 'airspace-text-path'
+                    }
+                });
             };
 
             const geoJsonLayer = L.geoJSON(geojsonData, {
