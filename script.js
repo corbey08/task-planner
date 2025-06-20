@@ -153,7 +153,7 @@ function loadAirspace() {
                 const airspaceClass = feature.properties.icaoClass || feature.properties.CLASS;
                 return {
                     color: getAirspaceColor(airspaceClass),
-                    fillOpacity: 0, // No fill
+                    fillOpacity: 0, // No fill (important for boundary labels to be visible)
                     weight: 1.5,
                     opacity: 0.7,
                     interactive: false 
@@ -172,16 +172,22 @@ function loadAirspace() {
                     altitudeText = `${feature.properties.AL_UNITS || 'GND'} - ${feature.properties.AH_UNITS || 'UNL'}`;
                 }
                 
-                const labelText = `${name} | ${altitudeText}`;
+                const fullLabelText = `${name} | ${altitudeText}`;
 
-                layer.setText(labelText, {
-                    center: true,
-                    offset: 0,
-                    attributes: {
-                        'font-size': '12',
-                        'class': 'airspace-text-path'
-                    }
-                });
+                // Add the boundary label based on layer type
+                if (layer instanceof L.Polyline) {
+                    layer.setText(fullLabelText, {
+                        center: true,
+                        offset: 0,
+                        attributes: {
+                            'font-size': '12',
+                            'class': 'airspace-text-path'
+                        }
+                    });
+                } else if (layer instanceof L.Polygon) {
+                    addBoundaryLabel(layer, name, altitudeText); 
+                    addPolygonEdgeLabels(layer, name, altitudeText); 
+                }
             };
 
             const geoJsonLayer = L.geoJSON(geojsonData, {
@@ -237,33 +243,24 @@ function getClassFromIcaoClass(icaoClass) {
 
 // Function to add text labels along airspace boundaries
 function addBoundaryLabel(layer, name, altitudeText) {
-    // Get the bounds of the airspace
     const bounds = layer.getBounds();
     const center = bounds.getCenter();
     
-    // Create label text
     let labelText = name;
     if (altitudeText) {
         labelText += `\n${altitudeText}`;
     }
     
-    // Create a text marker at the center
     const textMarker = L.marker(center, {
         icon: L.divIcon({
-            className: 'airspace-label',
+            className: 'airspace-label-center', // Changed class name for clarity
             html: `<div class="airspace-text">${labelText.replace('\n', '<br>')}</div>`,
-            iconSize: [100, 40],
-            iconAnchor: [50, 20]
+            iconSize: [120, 40], // Adjust size as needed
+            iconAnchor: [60, 20] // Anchor in the center
         })
     });
     
-    // Add the text marker to the airspace layer
     airspaceLayer.addLayer(textMarker);
-    
-    // For polygon boundaries, we can also add labels along the edges
-    if (layer instanceof L.Polygon) {
-        addPolygonEdgeLabels(layer, name, altitudeText);
-    }
 }
 
 // Function to add labels along polygon edges
@@ -272,7 +269,6 @@ function addPolygonEdgeLabels(polygon, name, altitudeText) {
     
     if (latlngs.length < 3) return;
     
-    // Calculate the perimeter and place labels at intervals
     const numLabels = Math.min(4, Math.max(1, Math.floor(latlngs.length / 8)));
     const interval = Math.floor(latlngs.length / numLabels);
     
@@ -282,7 +278,6 @@ function addPolygonEdgeLabels(polygon, name, altitudeText) {
             const point1 = latlngs[index];
             const point2 = latlngs[index + 1];
             
-            // Calculate midpoint of the edge
             const midLat = (point1.lat + point2.lat) / 2;
             const midLng = (point1.lng + point2.lng) / 2;
             
@@ -290,7 +285,7 @@ function addPolygonEdgeLabels(polygon, name, altitudeText) {
             const angle = Math.atan2(point2.lat - point1.lat, point2.lng - point1.lng) * 180 / Math.PI;
             
             let labelText = name;
-            if (altitudeText && i === 0) { // Only show altitude on first label to avoid clutter
+            if (altitudeText && i === 0) { 
                 labelText += ` ${altitudeText}`;
             }
             
@@ -298,8 +293,8 @@ function addPolygonEdgeLabels(polygon, name, altitudeText) {
                 icon: L.divIcon({
                     className: 'airspace-edge-label',
                     html: `<div class="airspace-edge-text" style="transform: rotate(${angle}deg)">${labelText}</div>`,
-                    iconSize: [120, 20],
-                    iconAnchor: [60, 10]
+                    iconSize: [120, 20], // Adjust size as needed
+                    iconAnchor: [60, 10] // Anchor in the center
                 })
             });
             
