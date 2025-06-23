@@ -11,7 +11,12 @@ let activeSearchHighlightMarker = null;
 // Airspace variables
 let airspaceVisible = false;
 let airspaceLayer = null;
-const OPENAIP_API_KEY = process.env.OPENAIP_API_KEY;
+
+fetch('/.netlify/functions/proxy')
+  .then(res => res.json())
+  .then(data => {
+    console.log('All airspace data:', data);
+  });
 
 let turnpointMarkerMap = new Map();
 
@@ -147,6 +152,7 @@ function showAirspace() {
         return;
     }
 
+    // Use OpenAIP's new TMS tile service (v2 API)
     airspaceLayer = L.tileLayer('https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=' + OPENAIP_API_KEY, {
         attribution: '© openAIP',
         opacity: 0.7,
@@ -232,13 +238,15 @@ function createAirspacePolygon(airspace) {
 }
 
 function getAirspaceStyle(type, activity) {
+    // Clean styling to match openAIP website
     const baseStyle = {
-        weight: 1.5,       
-        opacity: 0.9,     
-        fillOpacity: 0.1, 
+        weight: 1.5,        // Thin borders like their site
+        opacity: 0.9,       // High opacity for borders
+        fillOpacity: 0.1,   // Very subtle fill
         dashArray: null
     };
 
+    // Simplified color scheme matching openAIP
     const colors = {
         'CTR': '#FF0000',
         'TMA': '#FF4500', 
@@ -273,9 +281,10 @@ function setupAirspaceReloading() {
         
         const currentBounds = map.getBounds();
         
+        // Check if we've moved significantly
         if (!lastBounds || !currentBounds.intersects(lastBounds)) {
             console.log('Map moved significantly, reloading airspace...');
-            showAirspace();
+            showAirspace(); // This will reload the airspace for new bounds
         }
         
         lastBounds = currentBounds;
