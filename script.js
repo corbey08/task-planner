@@ -11,13 +11,7 @@ let activeSearchHighlightMarker = null;
 // Airspace variables
 let airspaceVisible = false;
 let airspaceLayer = null;
-
-fetch('/.netlify/functions/proxy')
-  .then(res => res.json())
-  .then(data => {
-    console.log('All airspace data:', data);
-  });
-
+const OPENAIP_API_KEY = 'd9433bd4bd4e5d2b7e70bbd51163a2af';
 let turnpointMarkerMap = new Map();
 
 function degToRad(deg) {
