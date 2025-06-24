@@ -775,6 +775,25 @@ function refreshAirspace() {
     }
 }
 
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const toggleIcon = document.querySelector('.toggle-icon');
+
+    sidebar.classList.toggle('collapsed');
+
+    if (sidebar.classList.contains('collapsed')) {
+        toggleIcon.textContent = '>';
+    } else {
+        toggleIcon.textContent = '<';
+    }
+
+    setTimeout(() => {
+        if (typeof map !== 'undefined') {
+            map.invalidateSize();
+        }
+    },300);
+}
+
 setInterval(refreshAirspace, 30 * 60 * 1000);
 
 window.onload = function() {
