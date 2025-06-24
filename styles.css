@@ -21,11 +21,57 @@ body {
     width: 350px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 20px;
+    padding: 20px 35px 20px 10px;
     overflow-y: auto;
     box-shadow: 2px 0 15px rgba(0,0,0,0.3);
     position: relative;
     z-index: 1000;
+    transition: width 0.3s ease, margin-left 0.3s ease;
+}
+
+.sidebar.collapsed {
+    width: 60px;
+    padding: 20px 45px 20px 10px;
+    overflow: hidden;
+}
+
+.sidebar.collapsed .sidebar-content {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sidebar-toggle {
+    position: absolute;
+    top: 20px;
+    right: 15px;
+    width: 30px;
+    height: 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+    z-index: 1001;
+}
+
+.sidebar-toggle:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    transform: scale(1.1);
+}
+
+.sidebar-content {
+    transition: opacity 0.3s ease;
+}
+
+.toggle-icon {
+    transition: transform 0.3s ease;
 }
 
 .sidebar h1 {
@@ -395,7 +441,6 @@ body {
     background: #da190b;
 }
 
-
 @media (max-width: 768px) {
     body {
         height: 100dvh;
@@ -414,11 +459,30 @@ body {
         padding: 15px 20px 25px 20px;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        transition: height 0.3s ease, margin-bottom 0.3s ease;
+    }
+    
+    .sidebar.collapsed {
+        height: 60px;
+        width: 100%;
+        padding: 15px 20px;
+        overflow: hidden;
+    }
+    
+    .sidebar .sidebar-toggle {
+        top: 15px;
+        right: 20px;
+        position: absolute;
     }
     
     .map-container {
         height: 50vh;
         order: 1;
+        transition: height 0.3s ease;
+    }
+    
+    .sidebar.collapsed + .map-container {
+        height: calc(100vh - 60px);
     }
     
     .map-controls {
@@ -447,7 +511,6 @@ body {
     .task-list {
         max-height: 250px;
     }
-
 }
 
 .airspace-text-path {
