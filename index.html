@@ -7,55 +7,64 @@
     <title>Glider Pilot Task Planning</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <link rel="stylesheet" href="styles.css">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJB6NB30CE"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-YJB6NB30CE');
+    </script>
 </head>
 <body>
     <div class="app-container">
-        <div class="sidebar">
-            <h1>🛩️ Task Planning</h1>
-            <p class="subtitle">Click turnpoints to build your task</p>
-            <p>Idea for website from Seth Helstrip</p>
-            <p>Turnpoints from NavBoys</p>
-            <p>Airspace from OpenAIP. Please check your own airspace</p>
-            <div class="control-section">
-                <h3>Scoring Method</h3>
-                <div class="scoring-toggle">
-                    <div class="scoring-option active" onclick="setScoringMethod('fai')">FAI Sectors</div>
-                    <div class="scoring-option" onclick="setScoringMethod('barrels')">Barrels</div>
-                </div>
-
-                <div class="distance-display">
-                    <div class="distance-value" id="totalDistance">0.0</div>
-                    <div class="distance-label">kilometers</div>
-                </div>
-            </div>
-
-            <div class="control-section">
-                <h3>Task Points</h3>
-                <div class="task-list" id="taskList">
-                    <div class="empty-task">
-                        Click on turnpoints on the map to start building your task
+        <div class="sidebar" id="sidebar">
+            <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+                <span class="toggle-icon">‹</span>
+            </button>
+            <div class="sidebar-content">
+                <h1>🛩️ Task Planning</h1>
+                <p class="subtitle">Click turnpoints to build your task</p>
+                <p>Idea for website from Seth Helstrip</p>
+                <p>Turnpoints from NavBoys</p>
+                <p>Airspace from OpenAIP. Always confirm airspace restrictions and NOTAMs before flying.</p>
+                <div class="control-section">
+                    <h3>Scoring Method</h3>
+                    <div class="scoring-toggle">
+                        <div class="scoring-option active" onclick="setScoringMethod('fai')">FAI Sectors</div>
+                        <div class="scoring-option" onclick="setScoringMethod('barrels')">Barrels</div>
+                    </div>
+                    <div class="distance-display">
+                        <div class="distance-value" id="totalDistance">0.0</div>
+                        <div class="distance-label">kilometers</div>
                     </div>
                 </div>
-                <button class="btn" onclick="clearTask()" style="margin-top: 15px;">Clear Task</button>
-            </div>
-
-            <div class="control-section">
-                <h3>Search Turnpoints</h3>
-                <input type="text" id="searchInput" placeholder="Search by name or code..." class="search-input" onkeyup="searchTurnpoints()">
-                <div id="searchResults" class="search-results">
+                <div class="control-section">
+                    <h3>Task Points</h3>
+                    <div class="task-list" id="taskList">
+                        <div class="empty-task">
+                            Click on turnpoints on the map to start building your task
+                        </div>
+                    </div>
+                    <button class="btn" onclick="clearTask()" style="margin-top: 15px;">Clear Task</button>
+                </div>
+                <div class="control-section">
+                    <h3>Search Turnpoints</h3>
+                    <input type="text" id="searchInput" placeholder="Search by name or code..." class="search-input" onkeyup="searchTurnpoints()">
+                    <div id="searchResults" class="search-results">
+                    </div>
                 </div>
             </div>
-            </div> <div class="map-container">
-                <div class="map-controls">
-                    <button class="map-btn" onclick="switchMapType()">Switch Map Type</button>
-                    <button class="map-btn" onclick="toggleAirspace()">Show/Hide Airspace</button>
-                </div>
-
-                <div id="map"></div>
-
+        </div>
+        <div class="map-container">
+            <div class="map-controls">
+                <button class="map-btn" onclick="switchMapType()">Switch Map Type</button>
+                <button class="map-btn" onclick="toggleAirspace()">Show/Hide Airspace</button>
             </div>
+            <div id="map"></div>
+        </div>
     </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="script.js"></script>
 </body>
