@@ -458,13 +458,27 @@ function updateTaskDisplay() {
     let totalDistance = 0;
 
     selectedTask.forEach((point, index) => {
+        let segmentDistance = 0;
+        let bearing = 0;
+        let distanceBearingHtml = '';
+
         if (index > 0) {
             const prevPoint = selectedTask[index - 1];
-            const segmentDistance = calculateDistance(
+            segmentDistance = calculateDistance(
+                prevPoint.lat, prevPoint.lon,
+                point.lat, point.lon
+            );
+            bearing = calculateBearing(
                 prevPoint.lat, prevPoint.lon,
                 point.lat, point.lon
             );
             totalDistance += segmentDistance;
+            
+            distanceBearingHtml = `
+                <div class="task-point-leg">
+                    ${segmentDistance.toFixed(1)}km @ ${formatBearing(bearing)}°
+                </div>
+            `;
         }
 
         const pointType = index === 0 ? 'Start' :
@@ -472,23 +486,24 @@ function updateTaskDisplay() {
             `TP${index}`;
 
         html += `
-                    <div class="task-point" data-index="${index}">
-                        <div class="task-point-info">
-                            <div class="task-point-name">${pointType}: ${point.name}</div>
-                            <div class="task-point-code">${point.code}</div>
-                        </div>
-                        <div class="task-point-actions">
-                            <button class="replace-point" onclick="openReplaceDialog(${index})" title="Replace this turnpoint">⟳</button>
-                            <button class="remove-point" onclick="removeFromTask(${index})" title="Remove this turnpoint">×</button>
-                        </div>
-                    </div>
-                    <div id="replaceDialog-${index}" class="replace-dialog">
-                        <input type="text" placeholder="New turnpoint name/code" class="replace-input" id="replaceInput-${index}" list="turnpointSuggestions">
-                        <datalist id="turnpointSuggestions"></datalist>
-                        <button onclick="confirmReplace(${index})">OK</button>
-                        <button onclick="cancelReplace(${index})">Cancel</button>
-                    </div>
-                `;
+            <div class="task-point" data-index="${index}">
+                <div class="task-point-info">
+                    <div class="task-point-name">${pointType}: ${point.name}</div>
+                    <div class="task-point-code">${point.code}</div>
+                    ${index > 0 ? `<div class="task-point-leg">${segmentDistance.toFixed(1)}km @ ${formatBearing(bearing)}°</div>` : ''}
+                </div>
+                <div class="task-point-actions>
+                    <button class="replace-point" onclick="openReplaceDialog(${index}) title="Replace this turnpoint">⟳</button>
+                    <button class="remove-point" onclick="removeFromTask(${index})" title="Remove this turnpoint">x</button>
+                </div>
+            </div>
+            <div id="replaceDialog-${index}" class="replace-dialog">
+                <input type="text" placeholder="New turnpoint name/code" class="replace-input" id="replaceInput-${index}" list="turnpointSuggestions">
+                <datalist id="turnpointSuggestions"></datalist>
+                <button onclick="confirmReplace(${index})">OK</button>
+                <button onclick="cancelReplace(${index})">Cancel</button>
+            </div>
+        `;
     });
 
     if (scoringMethod === 'barrels' && selectedTask.length > 2) {
@@ -855,6 +870,26 @@ function toggleSidebar() {
         }
     },300);
 }
+
+function calculateBearing(lat1, lon1, lat2, lon2) {
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
+    
+    const y = Math.sin(dLon) * Math.cos(lat2Rad);
+    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - 
+              Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+    
+    let bearing = Math.atan2(y, x) * 180 / Math.PI;
+    bearing = (bearing + 360) % 360;
+    
+    return bearing;
+}
+
+function formatBearing(bearing) {
+    return Math.round(bearing).toString().padStart(3, '0');
+}
+
 
 setInterval(refreshAirspace, 30 * 60 * 1000);
 
