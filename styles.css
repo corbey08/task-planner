@@ -567,3 +567,10 @@ body {
         transform: scale(1.1);
     }
 }
+
+.task-point-leg {
+    font-size: 1em;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 3px;
+    font-family: monospace;
+}
