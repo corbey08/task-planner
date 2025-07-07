@@ -492,8 +492,8 @@ function updateTaskDisplay() {
                     <div class="task-point-code">${point.code}</div>
                     ${index > 0 ? `<div class="task-point-leg">${segmentDistance.toFixed(1)}km @ ${formatBearing(bearing)}°</div>` : ''}
                 </div>
-                <div class="task-point-actions>
-                    <button class="replace-point" onclick="openReplaceDialog(${index}) title="Replace this turnpoint">⟳</button>
+                <div class="task-point-actions">
+                    <button class="replace-point" onclick="openReplaceDialog(${index})" title="Replace this turnpoint">⇄</button>
                     <button class="remove-point" onclick="removeFromTask(${index})" title="Remove this turnpoint">x</button>
                 </div>
             </div>
@@ -881,7 +881,7 @@ function calculateBearing(lat1, lon1, lat2, lon2) {
               Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
     
     let bearing = Math.atan2(y, x) * 180 / Math.PI;
-    bearing = (bearing + 360) % 360;
+    bearing = (bearing + 360) % 360; 
     
     return bearing;
 }
