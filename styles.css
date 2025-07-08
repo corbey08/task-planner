@@ -513,7 +513,8 @@ body {
     }
 
     .task-list {
-        max-height: 250px;
+        max-height: none;
+        overflow: visible
     }
 }
 
