@@ -858,10 +858,12 @@ function toggleSidebar() {
 
     sidebar.classList.toggle('collapsed');
 
+    const isMobile = window.innerWidth <= 768;
+
     if (sidebar.classList.contains('collapsed')) {
-        toggleIcon.textContent = '>';
+        toggleIcon.textContent = isMobile ? '▲' : '▶';
     } else {
-        toggleIcon.textContent = '<';
+        toggleIcon.textContent =isMobile ? '▼' : '◀';
     }
 
     setTimeout(() => {
@@ -890,6 +892,17 @@ function formatBearing(bearing) {
     return Math.round(bearing).toString().padStart(3, '0');
 }
 
+window.addEventListener('resize', () => {
+    const sidebar = document.getElementById('sidebar');
+    const toggleIcon = document.querySelector('.toggle-icon');
+    const isMobile = window.innerWidth <= 768;
+    
+    if (sidebar.classList.contains('collapsed')) {
+        toggleIcon.textContent = isMobile ? '▲' : '▶';
+    } else {
+        toggleIcon.textContent = isMobile ? '▼' : '◀';
+    }
+});
 
 setInterval(refreshAirspace, 30 * 60 * 1000);
 
