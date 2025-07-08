@@ -600,3 +600,11 @@ body {
 #sidebar::-webkit-scrollbar-thumb:hover {
   background-color: #21258a;
 }
+
+p {
+    margin-bottom: 0.5em;
+}
+
+p:last-of-type {
+    margin-bottom: 0;
+}
