@@ -502,6 +502,8 @@ body {
     .control-section {
         padding: 15px;
         margin-bottom: 15px;
+        max-height: none;
+        overflow: visible;
     }
 
     .distance-display {
@@ -514,7 +516,8 @@ body {
 
     .task-list {
         max-height: none;
-        overflow: visible
+        overflow: visible;
+        
     }
 }
 
