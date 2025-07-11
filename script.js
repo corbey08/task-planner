@@ -947,45 +947,50 @@ function formatBearing(bearing) {
 }
 
 function validateFAI28Rule(task) {
-    if (task.length < 4 || task.length > 6) return false;
-
+    if (task.length < 4) return false;
+    if (task.length > 6) return false;
+    
+    // Check for duplicate turnpoints (excluding start/finish being the same)
     const turnpointCodes = task.map(point => point.code);
-    const middleTurnpoints = turnpointCodes.slice(1, -1);
+    
+    // Check middle turnpoints for duplicates
+    const middleTurnpoints = turnpointCodes.slice(1, -1); // Exclude start and finish
     const uniqueMiddleTurnpoints = [...new Set(middleTurnpoints)];
-
-    if (middleTurnpoints.length !== uniqueMiddleTurnpoints.length) return false;
-
+    
+    // If there are duplicates in middle turnpoints, task is invalid
+    if (middleTurnpoints.length !== uniqueMiddleTurnpoints.length) {
+        return false;
+    }
+    
+    // Check if any middle turnpoint is the same as start or finish
     const startCode = turnpointCodes[0];
-    const finishCode = turnpointCodes[task.length - 1];
-
+    const finishCode = turnpointCodes[turnpointCodes.length - 1];
+    
     for (const middleCode of middleTurnpoints) {
-        if (middleCode === startCode || middleCode === finishCode) return false;
+        if (middleCode === startCode || middleCode === finishCode) {
+            return false;
+        }
     }
-
-    // Check closure
-    const startPoint = task[0];
-    const finishPoint = task[task.length - 1];
-    const closureDistance = calculateDistance(startPoint.lat, startPoint.lon, finishPoint.lat, finishPoint.lon);
-    if (closureDistance > 0.4) return false;
-
-    // Check colinearity (only for triangle tasks)
-    if (task.length === 4) {
-        const area = triangleArea(task[0], task[1], task[2]);
-        if (area < 0.0001) return false;
-    }
-
+    
     let totalDistance = 0;
     let legDistances = [];
-
+    
+    // Calculate all leg distances
     for (let i = 1; i < task.length; i++) {
-        const prev = task[i - 1];
-        const curr = task[i];
-        const d = calculateDistance(prev.lat, prev.lon, curr.lat, curr.lon);
-        legDistances.push(d);
-        totalDistance += d;
+        const prevPoint = task[i - 1];
+        const currentPoint = task[i];
+        const distance = calculateDistance(
+            prevPoint.lat, prevPoint.lon,
+            currentPoint.lat, currentPoint.lon
+        );
+        legDistances.push(distance);
+        totalDistance += distance;
     }
-
+    
+    // Find shortest leg
     const shortestLeg = Math.min(...legDistances);
+    
+    // Check if shortest leg is at least 28% of total
     return (shortestLeg / totalDistance) >= 0.28;
 }
 
