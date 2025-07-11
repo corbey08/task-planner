@@ -946,9 +946,17 @@ function formatBearing(bearing) {
     return Math.round(bearing).toString().padStart(3, '0');
 }
 
+//TODO add more detailed validation once exact rules are confirmed
 function validateFAI28Rule(task) {
     if (task.length < 4) return false;
     if (task.length > 6) return false;
+    
+    // Check that start and finish turnpoints are the same
+    const startCode = task[0].code;
+    const finishCode = task[task.length - 1].code;
+    if (startCode !== finishCode) {
+        return false;
+    }
     
     // Check for duplicate turnpoints (excluding start/finish being the same)
     const turnpointCodes = task.map(point => point.code);
@@ -963,11 +971,8 @@ function validateFAI28Rule(task) {
     }
     
     // Check if any middle turnpoint is the same as start or finish
-    const startCode = turnpointCodes[0];
-    const finishCode = turnpointCodes[turnpointCodes.length - 1];
-    
     for (const middleCode of middleTurnpoints) {
-        if (middleCode === startCode || middleCode === finishCode) {
+        if (middleCode === startCode) {
             return false;
         }
     }
