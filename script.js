@@ -188,6 +188,7 @@ function createAirspaceLayer(airspaceData) {
     });
 }
 
+
 function createAirspacePolygon(airspace) {
     try {
         const coordinates = airspace.geometry.coordinates;
@@ -205,8 +206,8 @@ function createAirspacePolygon(airspace) {
             return null;
         }
         
-        // Get airspace color based on type
-        const style = getAirspaceStyle(airspace.type, airspace.activity);
+        // Get airspace color based on type and lower limit
+        const style = getAirspaceStyle(airspace.type, airspace.activity, airspace.lowerLimit);
         
         const polygon = L.polygon(latlngs, style);
         
@@ -231,12 +232,12 @@ function createAirspacePolygon(airspace) {
     }
 }
 
-function getAirspaceStyle(type, activity) {
+function getAirspaceStyle(type, activity, lowerLimit) {
     // Clean styling to match openAIP website
     const baseStyle = {
         weight: 1.5,        // Thin borders like their site
         opacity: 0.9,       // High opacity for borders
-        fillOpacity: 0.1,   // Very subtle fill
+        fillOpacity: 0.1,   // Default subtle fill
         dashArray: null
     };
 
@@ -248,14 +249,50 @@ function getAirspaceStyle(type, activity) {
         'P': '#8B0000',
         'R': '#DC143C',
         'D': '#B22222',
+        'ATZ': '#FF0000',    // Air Traffic Zone
         'default': '#666666'
     };
 
+    // Check if airspace is prohibited for gliders from ground level
+    const isProhibitedFromGround = isProhibitedAirspaceFromGround(type, lowerLimit);
+    
     return {
         ...baseStyle,
         color: colors[type] || colors.default,
-        fillColor: colors[type] || colors.default
+        fillColor: isProhibitedFromGround ? '#FF0000' : (colors[type] || colors.default),
+        fillOpacity: isProhibitedFromGround ? 0.75 : 0.4  // More visible fill for prohibited areas
     };
+}
+
+function isProhibitedAirspaceFromGround(type, lowerLimit) {
+    // List of airspace types that are typically prohibited for gliders
+    const prohibitedTypes = ['P', 'R', 'D', 'ATZ', 'CTR'];
+    
+    // Check if it's a prohibited type
+    if (!prohibitedTypes.includes(type)) {
+        return false;
+    }
+    
+    // Check if lower limit indicates ground level
+    if (!lowerLimit || !lowerLimit.value) {
+        return false;
+    }
+    
+    const lowerValue = lowerLimit.value.toString().toLowerCase();
+    const lowerUnit = lowerLimit.unit ? lowerLimit.unit.toLowerCase() : '';
+    
+    // Check for ground level indicators
+    const groundLevelIndicators = [
+        'gnd', 'ground', 'sfc', 'surface', '0', 'agl'
+    ];
+    
+    // Check if lower limit is at ground level
+    const isGroundLevel = groundLevelIndicators.some(indicator => 
+        lowerValue.includes(indicator) || 
+        (lowerValue === '0' && (lowerUnit.includes('ft') || lowerUnit.includes('m')))
+    );
+    
+    return isGroundLevel;
 }
 
 function updateAirspaceButton() {
@@ -515,6 +552,17 @@ function updateTaskDisplay() {
     taskListDiv.innerHTML = html;
     document.getElementById('totalDistance').textContent = totalDistance.toFixed(1);
 
+    const faiValidation = document.getElementById('faiValidation');
+    if (selectedTask.length >= 3) {
+        const isValid = validateFAI28Rule(selectedTask);
+        faiValidation.style.display = 'block';
+        faiValidation.innerHTML = isValid ? 
+            '<span style="color: chartreuse;">✓ Task meets FAI 28% triangle rule</span>' : 
+            '<span style="color: white;"></span>';
+    } else {
+        faiValidation.style.display = 'none';
+    }
+
     selectedTask.forEach((point, index) => {
         const dialog = document.getElementById(`replaceDialog-${index}`);
         if (dialog) dialog.style.display = 'none';
@@ -538,6 +586,11 @@ function removeFromTask(index) {
     updateTaskDisplay();
     updateTaskLine();
     updateTaskMarkers();
+
+    const faiValidation = document.getElementById('faiValidation');
+    if (selectedTask.length < 3) {
+        faiValidation.style.display = 'none';
+    }
 }
 
 function calculateDistanceVincenty(lat1, lon1, lat2, lon2) {
@@ -674,6 +727,7 @@ function clearTask() {
     updateTaskDisplay();
     updateTaskLine();
     updateTaskMarkers();
+    document.getElementById('faiValidation').style.display = 'none';
 }
 
 function openReplaceDialog(index) {
@@ -861,9 +915,9 @@ function toggleSidebar() {
     const isMobile = window.innerWidth <= 768;
 
     if (sidebar.classList.contains('collapsed')) {
-        toggleIcon.textContent = isMobile ? '▲' : '▶';
+        toggleIcon.textContent = isMobile ? '▲' : '>';
     } else {
-        toggleIcon.textContent =isMobile ? '▼' : '◀';
+        toggleIcon.textContent =isMobile ? '▼' : '<';
     }
 
     setTimeout(() => {
@@ -892,15 +946,63 @@ function formatBearing(bearing) {
     return Math.round(bearing).toString().padStart(3, '0');
 }
 
+function validateFAI28Rule(task) {
+    if (task.length < 4) return false;
+    if (task.length > 6) return false;
+    
+    // Check for duplicate turnpoints (excluding start/finish being the same)
+    const turnpointCodes = task.map(point => point.code);
+    
+    // Check middle turnpoints for duplicates
+    const middleTurnpoints = turnpointCodes.slice(1, -1); // Exclude start and finish
+    const uniqueMiddleTurnpoints = [...new Set(middleTurnpoints)];
+    
+    // If there are duplicates in middle turnpoints, task is invalid
+    if (middleTurnpoints.length !== uniqueMiddleTurnpoints.length) {
+        return false;
+    }
+    
+    // Check if any middle turnpoint is the same as start or finish
+    const startCode = turnpointCodes[0];
+    const finishCode = turnpointCodes[turnpointCodes.length - 1];
+    
+    for (const middleCode of middleTurnpoints) {
+        if (middleCode === startCode || middleCode === finishCode) {
+            return false;
+        }
+    }
+    
+    let totalDistance = 0;
+    let legDistances = [];
+    
+    // Calculate all leg distances
+    for (let i = 1; i < task.length; i++) {
+        const prevPoint = task[i - 1];
+        const currentPoint = task[i];
+        const distance = calculateDistance(
+            prevPoint.lat, prevPoint.lon,
+            currentPoint.lat, currentPoint.lon
+        );
+        legDistances.push(distance);
+        totalDistance += distance;
+    }
+    
+    // Find shortest leg
+    const shortestLeg = Math.min(...legDistances);
+    
+    // Check if shortest leg is at least 28% of total
+    return (shortestLeg / totalDistance) >= 0.28;
+}
+
 window.addEventListener('resize', () => {
     const sidebar = document.getElementById('sidebar');
     const toggleIcon = document.querySelector('.toggle-icon');
     const isMobile = window.innerWidth <= 768;
     
     if (sidebar.classList.contains('collapsed')) {
-        toggleIcon.textContent = isMobile ? '▲' : '▶';
+        toggleIcon.textContent = isMobile ? '▲' : '>';
     } else {
-        toggleIcon.textContent = isMobile ? '▼' : '◀';
+        toggleIcon.textContent = isMobile ? '▼' : '<';
     }
 });
 
