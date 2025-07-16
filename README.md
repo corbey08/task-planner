@@ -1,3 +1,6 @@
+![Task Planner landing page Screenshot](homepage.png)
+![Task Planner example usage Screenshot](example-usage.png)
+
 📝 Description
 The Gliding Task Planner is a web-based application designed to assist glider pilots in planning cross-country soaring tasks. Leveraging the Leaflet.js mapping library, it provides an intuitive interface for pilots to select geographical "turnpoints" and visualize their proposed flight path. The application dynamically calculates the total distance of the selected task and offers advanced features like real-time validation against the FAI 28% triangle rule and an optional airspace overlay powered by the OpenAIP API.
 
