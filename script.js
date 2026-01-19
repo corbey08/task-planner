@@ -146,7 +146,7 @@ function showAirspace() {
         return;
     }
 
-    // Use OpenAIP's new TMS tile service (v2 API)
+    // Use OpenAIP's v2 API
     airspaceLayer = L.tileLayer('https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=' + OPENAIP_API_KEY, {
         attribution: '© openAIP',
         opacity: 0.7,
@@ -233,15 +233,13 @@ function createAirspacePolygon(airspace) {
 }
 
 function getAirspaceStyle(type, activity, lowerLimit) {
-    // Clean styling to match openAIP website
     const baseStyle = {
-        weight: 1.5,        // Thin borders like their site
-        opacity: 0.9,       // High opacity for borders
-        fillOpacity: 0.1,   // Default subtle fill
+        weight: 1.5, 
+        opacity: 0.9, 
+        fillOpacity: 0.1,
         dashArray: null
     };
 
-    // Simplified color scheme matching openAIP
     const colors = {
         'CTR': '#FF0000',
         'TMA': '#FF4500', 
@@ -249,7 +247,7 @@ function getAirspaceStyle(type, activity, lowerLimit) {
         'P': '#8B0000',
         'R': '#DC143C',
         'D': '#B22222',
-        'ATZ': '#FF0000',    // Air Traffic Zone
+        'ATZ': '#FF0000', 
         'default': '#666666'
     };
 
@@ -265,10 +263,9 @@ function getAirspaceStyle(type, activity, lowerLimit) {
 }
 
 function isProhibitedAirspaceFromGround(type, lowerLimit) {
-    // List of airspace types that are typically prohibited for gliders
+    // List of airspace types that are prohibited for gliders
     const prohibitedTypes = ['P', 'R', 'D', 'ATZ', 'CTR'];
     
-    // Check if it's a prohibited type
     if (!prohibitedTypes.includes(type)) {
         return false;
     }
@@ -312,10 +309,9 @@ function setupAirspaceReloading() {
         
         const currentBounds = map.getBounds();
         
-        // Check if we've moved significantly
         if (!lastBounds || !currentBounds.intersects(lastBounds)) {
             console.log('Map moved significantly, reloading airspace...');
-            showAirspace(); // This will reload the airspace for new bounds
+            showAirspace(); 
         }
         
         lastBounds = currentBounds;
@@ -443,7 +439,6 @@ function addTurnpointsToMap() {
 
     updateTaskMarkers();
     
-    // Setup airspace reloading after map is initialized
     setupAirspaceReloading();
 }
 
@@ -1016,3 +1011,4 @@ setInterval(refreshAirspace, 30 * 60 * 1000);
 window.onload = function() {
     initMap();
 };
+
